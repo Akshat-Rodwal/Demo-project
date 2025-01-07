@@ -1,45 +1,39 @@
-
-import React from 'react';
-import { Table, Button, Spin, message } from 'antd';
-import { useQuery } from 'react-query';
-import axios from 'axios';
-import AddUserForm from './AddUserForm';
+import React, { useEffect } from 'react';
+import { useAtom } from 'jotai';
+import { userAtom } from './state';
+import { fetchUsers, deleteUser } from './api';
+import { Table, Button, message } from 'antd';
 import { DeleteOutlined } from '@ant-design/icons';
 
+const UserList = () => {
+  const [users, setUsers] = useAtom(userAtom); // Jotai state
 
-const fetchData = async () => {
-  const { data } = await axios.get('http://localhost:5000/api/data');
-  return data;
-};
+  useEffect(() => {
+    const loadUsers = async () => {
+      try {
+        const data = await fetchUsers();
+        setUsers(data); // Fetch and set state
+      } catch (error) {
+        message.error('Error fetching users: ' + error.message);
+      }
+    };
 
-function UserList() {
-  const { data, error, isLoading, refetch } = useQuery('userData', fetchData);  
+    loadUsers();
+  }, [setUsers]);
 
-
-  if (isLoading) return <Spin size="large" />;
-
-
-  if (error) return <div>Error fetching data</div>;
-
- 
   const handleDeleteUser = async (userId) => {
     try {
-      await axios.delete(`http://localhost:5000/api/data/${userId}`);
+      await deleteUser(userId);
+      setUsers(users.filter((user) => user.id !== userId)); // Update Jotai state
       message.success('User deleted successfully!');
-      refetch(); 
     } catch (error) {
       message.error('Error deleting user: ' + error.message);
-      console.error(error);
     }
   };
 
   return (
     <div>
-    
-      <AddUserForm refetch={refetch} />
-
-      
-      <Table dataSource={data} rowKey="id" pagination={false}>
+      <Table dataSource={users} rowKey="id" pagination={false}>
         <Table.Column title="Name" dataIndex="name" key="name" />
         <Table.Column title="Age" dataIndex="age" key="age" />
         <Table.Column
@@ -56,10 +50,8 @@ function UserList() {
           )}
         />
       </Table>
-
-      
     </div>
   );
-}
+};
 
 export default UserList;

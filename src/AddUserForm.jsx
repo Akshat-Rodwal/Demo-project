@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
-import axios from 'axios';
+import { useAtom } from 'jotai';
+import { userAtom } from './state';
+import { addUser } from './api';
 import { Input, Button, message } from 'antd';
 
-const AddUserForm = ({ refetch }) => {
+const AddUserForm = () => {
   const [name, setName] = useState('');
   const [age, setAge] = useState('');
+  const [users, setUsers] = useAtom(userAtom); // Jotai state
 
   const handleAddUser = async () => {
     if (!name || !age) {
@@ -12,19 +15,15 @@ const AddUserForm = ({ refetch }) => {
       return;
     }
 
-    const newUser = { name, age: parseInt(age) };
-
     try {
-      const response = await axios.post('http://localhost:5000/api/data', newUser);
-      if (response.status === 201) {
-        message.success('User added successfully!');
-        setName('');
-        setAge('');
-        refetch();
-      }
+      const newUser = { name, age: parseInt(age) };
+      const addedUser = await addUser(newUser);
+      setUsers([...users, addedUser]); // Update Jotai state
+      message.success('User added successfully!');
+      setName('');
+      setAge('');
     } catch (error) {
       message.error('Error adding user: ' + error.message);
-      console.error(error);
     }
   };
 
@@ -43,7 +42,7 @@ const AddUserForm = ({ refetch }) => {
         className="mb-2"
         type="number"
       />
-      <Button className='m-5' type="primary" onClick={handleAddUser}>
+      <Button type="primary" onClick={handleAddUser}>
         Add User
       </Button>
     </div>
