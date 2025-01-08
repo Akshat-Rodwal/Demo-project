@@ -1,30 +1,31 @@
 import React, { useState } from 'react';
-import { useAtom } from 'jotai';
-import { userAtom } from './state';
+import { useMutation, useQueryClient } from 'react-query';
 import { addUser } from './api';
 import { Input, Button, message } from 'antd';
 
 const AddUserForm = () => {
   const [name, setName] = useState('');
   const [age, setAge] = useState('');
-  const [users, setUsers] = useAtom(userAtom); // Jotai state
+  const queryClient = useQueryClient();
 
-  const handleAddUser = async () => {
+  const mutation = useMutation(addUser, {
+    onSuccess: () => {
+      queryClient.invalidateQueries('userData'); // Refetch user data
+      message.success('User added successfully!');
+      setName('');
+      setAge('');
+    },
+    onError: (error) => {
+      message.error('Error adding user: ' + error.message);
+    },
+  });
+
+  const handleAddUser = () => {
     if (!name || !age) {
       message.error('Please fill in both name and age');
       return;
     }
-
-    try {
-      const newUser = { name, age: parseInt(age) };
-      const addedUser = await addUser(newUser);
-      setUsers([...users, addedUser]); // Update Jotai state
-      message.success('User added successfully!');
-      setName('');
-      setAge('');
-    } catch (error) {
-      message.error('Error adding user: ' + error.message);
-    }
+    mutation.mutate({ name, age: parseInt(age) });
   };
 
   return (
@@ -42,7 +43,7 @@ const AddUserForm = () => {
         className="mb-2"
         type="number"
       />
-      <Button type="primary" onClick={handleAddUser}>
+      <Button className='m-4' type="primary" onClick={handleAddUser} loading={mutation.isLoading}>
         Add User
       </Button>
     </div>

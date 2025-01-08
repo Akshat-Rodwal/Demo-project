@@ -1,35 +1,32 @@
-import React, { useEffect } from 'react';
-import { useAtom } from 'jotai';
-import { userAtom } from './state';
+import React from 'react';
+import { useQuery, useMutation, useQueryClient } from 'react-query';
 import { fetchUsers, deleteUser } from './api';
 import { Table, Button, message } from 'antd';
 import { DeleteOutlined } from '@ant-design/icons';
 
 const UserList = () => {
-  const [users, setUsers] = useAtom(userAtom); // Jotai state
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    const loadUsers = async () => {
-      try {
-        const data = await fetchUsers();
-        setUsers(data); // Fetch and set state
-      } catch (error) {
-        message.error('Error fetching users: ' + error.message);
-      }
-    };
+  const { data: users, isLoading, isError } = useQuery('userData', fetchUsers, {
+    staleTime: 1000 * 60 * 5, // 5 minutes cache
+  });
 
-    loadUsers();
-  }, [setUsers]);
-
-  const handleDeleteUser = async (userId) => {
-    try {
-      await deleteUser(userId);
-      setUsers(users.filter((user) => user.id !== userId)); // Update Jotai state
+  const mutation = useMutation(deleteUser, {
+    onSuccess: () => {
+      queryClient.invalidateQueries('userData'); // Refetch user data
       message.success('User deleted successfully!');
-    } catch (error) {
+    },
+    onError: (error) => {
       message.error('Error deleting user: ' + error.message);
-    }
+    },
+  });
+
+  const handleDeleteUser = (userId) => {
+    mutation.mutate(userId);
   };
+
+  if (isLoading) return <p>Loading...</p>;
+  if (isError) return <p>Error fetching users!</p>;
 
   return (
     <div>
@@ -41,9 +38,11 @@ const UserList = () => {
           key="action"
           render={(text, record) => (
             <Button
+            
               icon={<DeleteOutlined />}
               onClick={() => handleDeleteUser(record.id)}
               danger
+              loading={mutation.isLoading}
             >
               Delete
             </Button>
